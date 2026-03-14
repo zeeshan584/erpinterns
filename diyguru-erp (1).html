@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>DIYguru ERP — Intern Daily Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --dark:#1b2523;--green:#8fd299;--glight:#d4f0dc;--gdeep:#3d8b52;
+  --muted:#5a7068;--bg:#f4faf6;--card:#fff;--border:#c8e8d0;
+  --red:#e74c3c;--amber:#f39c12;--blue:#2980b9;--purple:#8e44ad;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);min-height:100vh;color:var(--dark)}
+.hidden{display:none!important}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── LOGIN ── */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,#1b2523 0%,#2d4a3e 55%,#3a6b52 100%);padding:1rem}
+.login-box{background:#fff;border-radius:22px;padding:2rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:1.8rem}
+.brand-mark{width:46px;height:46px;background:var(--dark);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-mark span{color:var(--green);font-weight:900;font-size:16px}
+.brand h1{font-size:18px;font-weight:800;color:var(--dark)}
+.brand p{font-size:11px;color:var(--muted)}
+.login-title{font-size:24px;font-weight:800;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:1.5rem}
+.user-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem}
+.user-card{padding:14px 10px;border-radius:14px;border:2px solid var(--border);background:var(--bg);
+  text-align:center;cursor:pointer;transition:all .15s;user-select:none}
+.user-card:hover{border-color:var(--gdeep);background:var(--glight)}
+.user-card.selected{border-color:var(--gdeep);background:var(--dark)}
+.uc-avatar{width:40px;height:40px;border-radius:50%;background:var(--glight);margin:0 auto 8px;
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:var(--gdeep)}
+.user-card.selected .uc-avatar{background:var(--gdeep);color:#fff}
+.uc-name{font-size:13px;font-weight:700;color:var(--dark)}
+.uc-role{font-size:10px;color:var(--muted);margin-top:2px}
+.user-card.selected .uc-name,.user-card.selected .uc-role{color:#fff}
+.user-card.selected .uc-role{color:var(--green)}
+.pin-section{display:none}
+.pin-section.show{display:block}
+.pin-who{font-size:13px;color:var(--muted);margin-bottom:10px}
+.pin-dots{display:flex;gap:10px;margin-bottom:12px}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:#fff;transition:all .15s}
+.pin-dot.filled{background:var(--dark);border-color:var(--dark)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.pin-key{padding:14px;border-radius:12px;border:1.5px solid var(--border);background:#fff;
+  font-size:18px;font-weight:700;cursor:pointer;text-align:center;transition:all .1s;user-select:none}
+.pin-key:hover{background:var(--glight);border-color:var(--gdeep)}
+.pin-key:active{transform:scale(.93)}
+.pin-err{color:var(--red);font-size:12px;min-height:16px;margin-bottom:6px}
+
+/* ── TOPBAR ── */
+#app{min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--dark);padding:0 1.2rem;height:56px;display:flex;align-items:center;
+  justify-content:space-between;position:sticky;top:0;z-index:200;gap:8px}
+.tb-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.tb-logo{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-weight:900;font-size:13px;color:var(--dark);flex-shrink:0}
+.tb-name{color:#fff;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-role{color:var(--green);font-size:10px;font-weight:600;margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tb-date{color:rgba(255,255,255,.5);font-size:11px}
+.btn-sm{padding:6px 12px;border-radius:8px;border:none;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-clock-in{background:var(--green);color:var(--dark)}
+.btn-clock-out{background:var(--red);color:#fff}
+.btn-logout{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2)!important}
+
+/* ── SIDEBAR + LAYOUT ── */
+.layout{display:flex;flex:1;overflow:hidden;min-height:0}
+.sidebar{width:200px;background:#fff;border-right:1px solid var(--border);flex-shrink:0;overflow-y:auto;padding:1rem 0}
+.nav-section{padding:0 .8rem;margin-bottom:1.2rem}
+.nav-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);
+  padding:0 .6rem;margin-bottom:6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;cursor:pointer;
+  font-size:13px;font-weight:500;color:var(--muted);transition:all .15s;margin-bottom:2px}
+.nav-item:hover{background:var(--bg);color:var(--dark)}
+.nav-item.active{background:var(--glight);color:var(--gdeep);font-weight:700}
+.nav-icon{font-size:15px;width:20px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--dark);color:var(--green);font-size:9px;
+  font-weight:800;padding:2px 6px;border-radius:10px}
+.page{flex:1;overflow-y:auto;padding:1.4rem}
+
+/* ── BUTTONS ── */
+.btn-primary{padding:10px 22px;background:var(--dark);color:var(--green);border:none;
+  border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.btn-primary:hover{opacity:.85}
+.btn-secondary{padding:10px 16px;background:#fff;color:var(--muted);border:1.5px solid var(--border);
+  border-radius:10px;font-size:13px;cursor:pointer}
+.btn-excel{padding:9px 16px;background:#1d6f42;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
+.btn-add-row{padding:7px 14px;background:var(--glight);color:var(--gdeep);border:1.5px dashed var(--gdeep);
+  border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:10px}
+.btn-add-row:hover{background:var(--gdeep);color:#fff}
+.btn-remove{width:24px;height:24px;border-radius:50%;background:#fde8e8;color:var(--red);border:none;
+  cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:1.5rem}
+.kpi{background:#fff;border-radius:14px;padding:1.1rem;border:1px solid var(--border);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kpi-color,var(--gdeep))}
+.kpi.dark{background:var(--dark);border-color:var(--dark)}
+.kpi.dark::before{background:var(--green)}
+.kpi-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
+.kpi.dark .kpi-lbl{color:var(--green)}
+.kpi-val{font-size:26px;font-weight:900;color:var(--dark);line-height:1}
+.kpi.dark .kpi-val{color:#fff}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.kpi.dark .kpi-sub{color:#8fd29980}
+.kpi-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:28px;opacity:.12}
+.prog{height:4px;background:var(--glight);border-radius:2px;margin-top:10px;overflow:hidden}
+.prog-fill{height:100%;background:var(--gdeep);border-radius:2px;transition:width .6s}
+
+/* ── PAGE SECTIONS ── */
+.page-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:10px}
+.page-title{font-size:18px;font-weight:800;color:var(--dark)}
+.page-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.section-card{background:#fff;border-radius:16px;border:1px solid var(--border);padding:1.4rem;margin-bottom:1.2rem}
+.section-title{font-size:14px;font-weight:700;color:var(--dark);margin-bottom:1rem;padding-bottom:8px;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ff{display:flex;flex-direction:column;gap:5px}
+.ff.full{grid-column:span 2}
+.ff.third{grid-column:span 1}
+.ff label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.ff input,.ff select,.ff textarea{padding:9px 11px;border:1.5px solid var(--border);
+  border-radius:9px;font-size:13px;color:var(--dark);outline:none;background:#fff;transition:border .15s;font-family:inherit}
+.ff input:focus,.ff select:focus,.ff textarea:focus{border-color:var(--gdeep)}
+.ff input[type=number]{-moz-appearance:textfield}
+.ff input[type=number]::-webkit-inner-spin-button{opacity:0}
+
+/* ── PROSPECT ROWS ── */
+.prospect-row{display:grid;grid-template-columns:2fr 2fr 1.5fr 1.5fr 1.5fr auto;gap:8px;align-items:center;
+  padding:10px;background:var(--bg);border-radius:10px;border:1px solid var(--border);margin-bottom:8px}
+.pr-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:4px}
+.pr-input{padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;
+  color:var(--dark);outline:none;background:#fff;width:100%;font-family:inherit}
+.pr-input:focus{border-color:var(--gdeep)}
+
+/* ── TABLE ── */
+.tbl-wrap{background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
+.data-table thead th{background:var(--dark);color:var(--green);padding:10px 12px;text-align:left;
+  font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.data-table tbody td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.data-table tbody tr:last-child td{border:none}
+.data-table tbody tr:hover td{background:#f9fdf9}
+.empty-row{padding:2.5rem;text-align:center;color:var(--muted);font-size:13px}
+.pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700}
+.pill.hot{background:#fde8e8;color:var(--red)}
+.pill.warm{background:#fff3e0;color:#c67200}
+.pill.cold{background:#e8f4fd;color:var(--blue)}
+.pill.enrolled{background:var(--glight);color:var(--gdeep)}
+.pill.followup{background:#f3e8fd;color:var(--purple)}
+
+/* ── TOAST ── */
+.toast{padding:11px 14px;border-radius:10px;font-size:13px;font-weight:600;
+  margin-bottom:12px;display:flex;align-items:center;gap:8px;animation:slideIn .2s}
+.toast.ok{background:var(--glight);border:1px solid var(--green);color:var(--gdeep)}
+.toast.error{background:#fde8e8;border:1px solid var(--red);color:var(--red)}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── STAT ROW ── */
+.stat-row{display:flex;gap:12px;margin-bottom:1.2rem;flex-wrap:wrap}
+.stat-chip{background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 16px;
+  display:flex;align-items:center;gap:8px;font-size:12px}
+.stat-chip strong{font-size:16px;font-weight:800;color:var(--dark)}
+.stat-chip span{color:var(--muted)}
+
+/* ── DATE FILTER ── */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
+.filter-bar input,.filter-bar select{padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;
+  font-size:12px;color:var(--dark);outline:none;background:#fff;font-family:inherit}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--gdeep)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  .sidebar{display:none}
+  .form-grid{grid-template-columns:1fr}
+  .ff.full{grid-column:span 1}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .prospect-row{grid-template-columns:1fr 1fr;gap:6px}
+  .page{padding:1rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ LOGIN ═══════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="brand">
+      <div class="brand-mark"><span>DG</span></div>
+      <div>
+        <h1>DIYguru ERP</h1>
+        <p>Intern Daily Performance Tracker</p>
+      </div>
+    </div>
+    <div class="login-title">Good day! 👋</div>
+    <div class="login-sub">Select your name, then enter your PIN</div>
+    <div class="user-cards" id="user-cards"></div>
+    <div class="pin-section" id="pin-section">
+      <div class="pin-who" id="pin-who">Enter PIN</div>
+      <div class="pin-dots">
+        <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="pin-err" id="pin-err"></div>
+      <div class="pin-pad">
+        <div class="pin-key" onclick="pp('1')">1</div><div class="pin-key" onclick="pp('2')">2</div><div class="pin-key" onclick="pp('3')">3</div>
+        <div class="pin-key" onclick="pp('4')">4</div><div class="pin-key" onclick="pp('5')">5</div><div class="pin-key" onclick="pp('6')">6</div>
+        <div class="pin-key" onclick="pp('7')">7</div><div class="pin-key" onclick="pp('8')">8</div><div class="pin-key" onclick="pp('9')">9</div>
+        <div class="pin-key" onclick="pclr()">⌫</div><div class="pin-key" onclick="pp('0')">0</div><div class="pin-key" onclick="prst()" style="font-size:11px;color:#aaa">CLR</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-logo">DG</div>
+      <div>
+        <div class="tb-name" id="tb-name">—</div>
+        <div class="tb-role" id="tb-role">—</div>
+      </div>
+    </div>
+    <div class="tb-right">
+      <div class="tb-date" id="tb-date"></div>
+      <button class="btn-sm btn-clock-in" id="clock-btn" onclick="toggleClock()">Clock In</button>
+      <button class="btn-sm btn-logout" onclick="doLogout()">Exit</button>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="nav-section">
+        <div class="nav-label">Overview</div>
+        <div class="nav-item active" onclick="nav('dashboard')" id="nav-dashboard">
+          <span class="nav-icon">📊</span> Dashboard
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Daily Work</div>
+        <div class="nav-item" onclick="nav('daily')" id="nav-daily">
+          <span class="nav-icon">📋</span> Daily Report
+        </div>
+        <div class="nav-item" onclick="nav('admissions')" id="nav-admissions">
+          <span class="nav-icon">🎓</span> Admissions
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Records</div>
+        <div class="nav-item" onclick="nav('history')" id="nav-history">
+          <span class="nav-icon">📁</span> All Reports
+          <span class="nav-badge" id="badge-count">0</span>
+        </div>
+        <div class="nav-item" onclick="nav('attendance')" id="nav-attendance">
+          <span class="nav-icon">🕐</span> Attendance
+        </div>
+      </div>
+    </div>
+    <div class="page" id="page-content"></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════
+   CONFIG — Paste your Google Apps Script URL here
+   ════════════════════════════════════════════════ */
+const SHEETS_URL = ""; // e.g. "https://script.google.com/macros/s/YOUR_ID/exec"
+
+/* ── USERS ── */
+const USERS = [
+  {id:1, name:"Aditi Devghaore",  role:"BDA Pre-Sale",   pin:"1111"},
+  {id:2, name:"Rugveda Pawar",    role:"BD Executive",   pin:"1111"},
+  {id:3, name:"Intern — Sales 1", role:"Sales Intern",   pin:"1111"},
+  {id:4, name:"Intern — Sales 2", role:"Sales Intern",   pin:"1111"},
+];
+
+const COURSES = ["EV Internship (3-Week)","PG Certificate – EV (12M)","Battery Technology","EV Design & Manufacturing","BMS & Power Electronics","E-Mobility Management","Automotive AI/ADAS"];
+const STAGES  = ["Hot Lead","Warm Lead","Cold Lead","Follow-up","Enrolled","Not Interested"];
+const SOURCES = ["Instagram","YouTube","WhatsApp","College Campus","Referral","LinkedIn","Google Ads","Walk-in","Other"];
+
+/* ── STATE ── */
+let S = {
+  user:null, page:"dashboard", pinBuf:"", selUser:null,
+  clockedIn:false, clockIn:null,
+  reports:[], admissions:[], attendance:[],
+  toast:null,
+  dForm: emptyDForm(),
+  aForm: emptyAForm(),
+};
+
+function emptyDForm(){
+  return {
+    date: todayISO(), totalCalls:0, followUps:0, demosDone:0,
+    emailsSent:0, whatsappSent:0, notes:"",
+    prospects:[ emptyProspect() ]
+  };
+}
+function emptyAForm(){
+  return {name:"",phone:"",email:"",course:"",amount:"",payment:"Full Payment",source:"",notes:"",status:"Enrolled"};
+}
+function emptyProspect(){
+  return {name:"",phone:"",course:"",stage:"Warm Lead",ticketSize:"",goal:"",callStatus:"Called"};
+}
+
+/* ── PERSISTENCE ── */
+function save(){
+  localStorage.setItem("dg_reports",JSON.stringify(S.reports));
+  localStorage.setItem("dg_admissions",JSON.stringify(S.admissions));
+  localStorage.setItem("dg_attendance",JSON.stringify(S.attendance));
+}
+function load(){
+  try{
+    S.reports   = JSON.parse(localStorage.getItem("dg_reports")||"[]");
+    S.admissions= JSON.parse(localStorage.getItem("dg_admissions")||"[]");
+    S.attendance= JSON.parse(localStorage.getItem("dg_attendance")||"[]");
+  }catch(e){}
+}
+
+/* ── HELPERS ── */
+function pad(n){return String(n).padStart(2,"0")}
+function fmtT(d){return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`}
+function fmtD(d){return new Date(d).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}
+function fmtS(d){return new Date(d).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}
+function todayISO(){return new Date().toISOString().slice(0,10)}
+function todayStr(){return new Date().toDateString()}
+function ini(n){return n.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+function thisMonth(arr){const n=new Date();return arr.filter(r=>{const d=new Date(r.date||r.ts);return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear()})}
+function toToday(arr){return arr.filter(r=>new Date(r.date||r.ts).toDateString()===todayStr())}
+function sumField(arr,f){return arr.reduce((s,r)=>s+(parseInt(r[f])||0),0)}
+function stageClass(s){
+  if(s==="Hot Lead") return "hot";
+  if(s==="Enrolled") return "enrolled";
+  if(s==="Follow-up") return "followup";
+  if(s==="Cold Lead"||s==="Not Interested") return "cold";
+  return "warm";
+}
+
+/* ── BUILD LOGIN ── */
+function buildLogin(){
+  document.getElementById("user-cards").innerHTML = USERS.map(u=>`
+    <div class="user-card" id="uc-${u.id}" onclick="selUser(${u.id})">
+      <div class="uc-avatar">${ini(u.name)}</div>
+      <div class="uc-name">${u.name.split(" ")[0]}</div>
+      <div class="uc-role">${u.role}</div>
+    </div>`).join("");
+}
+function selUser(id){
+  S.selUser=USERS.find(u=>u.id===id);
+  document.querySelectorAll(".user-card").forEach(c=>c.classList.remove("selected"));
+  document.getElementById("uc-"+id).classList.add("selected");
+  document.getElementById("pin-section").classList.add("show");
+  document.getElementById("pin-who").textContent=`PIN for ${S.selUser.name.split(" ")[0]}`;
+  prst();
+}
+function pp(d){if(!S.selUser||S.pinBuf.length>=4) return; S.pinBuf+=d; updDots(); if(S.pinBuf.length===4) setTimeout(checkPin,120);}
+function pclr(){S.pinBuf=S.pinBuf.slice(0,-1); updDots();}
+function prst(){S.pinBuf=""; updDots(); document.getElementById("pin-err").textContent="";}
+function updDots(){for(let i=0;i<4;i++) document.getElementById("pd"+i).className="pin-dot"+(i<S.pinBuf.length?" filled":"");}
+function checkPin(){
+  if(S.pinBuf===S.selUser.pin){
+    S.user=S.selUser;
+    document.getElementById("login-screen").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("tb-name").textContent=S.user.name;
+    document.getElementById("tb-role").textContent=S.user.role;
+    document.getElementById("tb-date").textContent=new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short"});
+    document.getElementById("badge-count").textContent=S.reports.length;
+    S.dForm=emptyDForm();
+    nav("dashboard");
+  } else {
+    document.getElementById("pin-err").textContent="Wrong PIN — try 1111";
+    prst();
+  }
+}
+
+/* ── CLOCK ── */
+let clockInt;
+function toggleClock(){
+  const btn=document.getElementById("clock-btn");
+  if(!S.clockedIn){
+    S.clockedIn=true; S.clockIn=new Date();
+    S.attendance.push({user:S.user.name,role:S.user.role,date:new Date(),in:new Date(),out:null});
+    btn.textContent="Clock Out"; btn.className="btn-sm btn-clock-out";
+    save();
+  } else {
+    S.clockedIn=false;
+    const r=S.attendance[S.attendance.length-1];
+    if(r&&!r.out) r.out=new Date();
+    S.clockIn=null; btn.textContent="Clock In"; btn.className="btn-sm btn-clock-in";
+    save();
+  }
+}
+function doLogout(){
+  if(S.clockedIn) toggleClock();
+  S.user=null; S.selUser=null; S.pinBuf=""; S.clockedIn=false;
+  document.getElementById("app").classList.add("hidden");
+  document.getElementById("login-screen").classList.remove("hidden");
+  document.querySelectorAll(".user-card").forEach(c=>c.classList.remove("selected"));
+  document.getElementById("pin-section").classList.remove("show");
+  prst();
+}
+
+/* ── NAV ── */
+function nav(p){
+  S.page=p; S.toast=null;
+  document.querySelectorAll(".nav-item").forEach(el=>el.classList.remove("active"));
+  const ni=document.getElementById("nav-"+p);
+  if(ni) ni.classList.add("active");
+  render();
+}
+function render(){
+  const el=document.getElementById("page-content");
+  if(S.page==="dashboard") el.innerHTML=renderDashboard();
+  else if(S.page==="daily") el.innerHTML=renderDailyForm();
+  else if(S.page==="admissions") el.innerHTML=renderAdmForm();
+  else if(S.page==="history") el.innerHTML=renderHistory();
+  else if(S.page==="attendance") el.innerHTML=renderAttendance();
+  bindAll();
+}
+
+/* ════ DASHBOARD ════ */
+function renderDashboard(){
+  const mr=thisMonth(S.reports);
+  const ma=thisMonth(S.admissions);
+  const tr=toToday(S.reports);
+  const ta=toToday(S.admissions);
+  const totalCalls=sumField(mr,"totalCalls");
+  const totalFollowups=sumField(mr,"followUps");
+  const totalDemos=sumField(mr,"demosDone");
+  const totalAdm=ma.length;
+  const revenue=S.admissions.filter(a=>{const d=new Date(a.ts);const n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();}).reduce((s,a)=>s+(parseInt(a.amount)||0),0);
+  const allProspects=mr.flatMap(r=>r.prospects||[]);
+  const hotLeads=allProspects.filter(p=>p.stage==="Hot Lead").length;
+  const pct=Math.min(100,Math.round((totalAdm/8)*100));
+  const recentReps=S.reports.slice().reverse().slice(0,5);
+  return `
+  <div class="page-hd">
+    <div><div class="page-title">Dashboard</div><div class="page-sub">Welcome back, ${S.user.name.split(" ")[0]} 👋 — ${new Date().toLocaleDateString("en-IN",{weekday:"long",day:"2-digit",month:"long"})}</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-excel" onclick="exportAll()">⬇ Export Excel</button>
+      <button class="btn-primary" onclick="nav('daily')">+ Daily Report</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi dark">
+      <div class="kpi-lbl">Total Calls (Month)</div>
+      <div class="kpi-val">${totalCalls}</div>
+      <div class="kpi-sub">Today: ${sumField(tr,"totalCalls")}</div>
+      <div class="kpi-icon">📞</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#e74c3c">
+      <div class="kpi-lbl">Follow-ups Done</div>
+      <div class="kpi-val">${totalFollowups}</div>
+      <div class="kpi-sub">Today: ${sumField(tr,"followUps")}</div>
+      <div class="kpi-icon">🔁</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#f39c12">
+      <div class="kpi-lbl">Demos / Pitches</div>
+      <div class="kpi-val">${totalDemos}</div>
+      <div class="kpi-sub">Today: ${sumField(tr,"demosDone")}</div>
+      <div class="kpi-icon">🎯</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#e74c3c">
+      <div class="kpi-lbl">🔥 Hot Leads</div>
+      <div class="kpi-val">${hotLeads}</div>
+      <div class="kpi-sub">This month</div>
+      <div class="kpi-icon">🔥</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--gdeep)">
+      <div class="kpi-lbl">Admissions</div>
+      <div class="kpi-val">${totalAdm}</div>
+      <div class="kpi-sub">Target: 8 this month</div>
+      <div class="prog"><div class="prog-fill" style="width:${pct}%"></div></div>
+      <div class="kpi-icon">🎓</div>
+    </div>
+    <div class="kpi" style="--kpi-color:var(--blue)">
+      <div class="kpi-lbl">Revenue (Month)</div>
+      <div class="kpi-val" style="font-size:20px">₹${revenue.toLocaleString("en-IN")}</div>
+      <div class="kpi-sub">Collected fees</div>
+      <div class="kpi-icon">💰</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:1.2rem;flex-wrap:wrap">
+    <div class="section-card" style="flex:1;min-width:220px;margin:0">
+      <div class="section-title">📅 Today's Summary</div>
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <tr><td style="padding:6px 0;color:var(--muted)">Reports filed</td><td style="text-align:right;font-weight:700">${tr.length}</td></tr>
+        <tr><td style="padding:6px 0;color:var(--muted)">Calls made</td><td style="text-align:right;font-weight:700">${sumField(tr,"totalCalls")}</td></tr>
+        <tr><td style="padding:6px 0;color:var(--muted)">Follow-ups</td><td style="text-align:right;font-weight:700">${sumField(tr,"followUps")}</td></tr>
+        <tr><td style="padding:6px 0;color:var(--muted)">Admissions</td><td style="text-align:right;font-weight:700">${ta.length}</td></tr>
+        <tr><td style="padding:6px 0;color:var(--muted)">WhatsApp sent</td><td style="text-align:right;font-weight:700">${sumField(tr,"whatsappSent")}</td></tr>
+      </table>
+    </div>
+    <div class="section-card" style="flex:2;min-width:280px;margin:0">
+      <div class="section-title">📋 Recent Daily Reports</div>
+      ${recentReps.length===0?`<div style="color:var(--muted);font-size:13px;padding:1rem 0;text-align:center">No reports yet. File your first daily report!</div>`:
+      `<table style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead><tr style="border-bottom:1.5px solid var(--border)">
+          <th style="padding:5px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Date</th>
+          <th style="padding:5px 8px;text-align:left;font-size:10px;color:var(--muted)">By</th>
+          <th style="padding:5px 8px;text-align:right;font-size:10px;color:var(--muted)">Calls</th>
+          <th style="padding:5px 8px;text-align:right;font-size:10px;color:var(--muted)">Followup</th>
+          <th style="padding:5px 8px;text-align:right;font-size:10px;color:var(--muted)">Prospects</th>
+        </tr></thead>
+        <tbody>${recentReps.map(r=>`
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:7px 8px;font-weight:600">${fmtS(r.date)}</td>
+            <td style="padding:7px 8px;color:var(--muted)">${r.by.split(" ")[0]}</td>
+            <td style="padding:7px 8px;text-align:right;font-weight:700">${r.totalCalls}</td>
+            <td style="padding:7px 8px;text-align:right">${r.followUps}</td>
+            <td style="padding:7px 8px;text-align:right">${(r.prospects||[]).length}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>`}
+    </div>
+  </div>`;
+}
+
+/* ════ DAILY REPORT FORM ════ */
+function renderDailyForm(){
+  const f=S.dForm;
+  return `
+  <div class="page-hd">
+    <div><div class="page-title">Daily Report</div><div class="page-sub">Log your calls, follow-ups, and prospects</div></div>
+  </div>
+  ${S.toast?`<div class="toast ${S.toast.type}">${S.toast.msg}</div>`:""}
+
+  <div class="section-card">
+    <div class="section-title">📅 Report Details</div>
+    <div class="form-grid">
+      <div class="ff"><label>Date *</label><input type="date" id="f-date" value="${f.date}"></div>
+      <div class="ff"><label>Reported By</label><input type="text" value="${S.user.name}" disabled style="background:#f5f5f5;color:var(--muted)"></div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">📞 Call Activity KPIs</div>
+    <div class="form-grid">
+      <div class="ff"><label>Total Calls Dialed *</label><input type="number" id="f-totalCalls" min="0" placeholder="e.g. 45" value="${f.totalCalls||""}"></div>
+      <div class="ff"><label>Follow-ups Done</label><input type="number" id="f-followUps" min="0" placeholder="e.g. 12" value="${f.followUps||""}"></div>
+      <div class="ff"><label>Demos / Pitches Done</label><input type="number" id="f-demosDone" min="0" placeholder="e.g. 5" value="${f.demosDone||""}"></div>
+      <div class="ff"><label>Emails Sent</label><input type="number" id="f-emailsSent" min="0" placeholder="e.g. 20" value="${f.emailsSent||""}"></div>
+      <div class="ff"><label>WhatsApp Messages</label><input type="number" id="f-whatsappSent" min="0" placeholder="e.g. 30" value="${f.whatsappSent||""}"></div>
+      <div class="ff"><label>Calls Picked Up</label><input type="number" id="f-callsPickup" min="0" placeholder="e.g. 18" value="${f.callsPickup||""}"></div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">🎯 Prospect Log (add each lead you spoke with)</div>
+    <div id="prospect-list">${renderProspects(f.prospects)}</div>
+    <button class="btn-add-row" onclick="addProspect()">+ Add Prospect</button>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">📝 Notes & Blockers</div>
+    <div class="ff full"><textarea id="f-notes" rows="3" placeholder="Challenges faced today, what worked well, any blockers, manager notes...">${f.notes||""}</textarea></div>
+  </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+    <button class="btn-primary" onclick="submitDaily()">Submit Daily Report</button>
+    <button class="btn-secondary" onclick="S.dForm=emptyDForm();render()">Reset</button>
+  </div>`;
+}
+
+function renderProspects(list){
+  return list.map((p,i)=>`
+  <div class="prospect-row" id="pr-${i}">
+    <div>
+      <div class="pr-label">Prospect Name</div>
+      <input class="pr-input" placeholder="Full name" value="${p.name||""}" onchange="updateP(${i},'name',this.value)">
+    </div>
+    <div>
+      <div class="pr-label">Course Interest</div>
+      <select class="pr-input" onchange="updateP(${i},'course',this.value)">
+        <option value="">Select</option>
+        ${COURSES.map(c=>`<option value="${c}"${p.course===c?" selected":""}>${c}</option>`).join("")}
+      </select>
+    </div>
+    <div>
+      <div class="pr-label">Stage / Goal</div>
+      <select class="pr-input" onchange="updateP(${i},'stage',this.value)">
+        ${STAGES.map(s=>`<option value="${s}"${p.stage===s?" selected":""}>${s}</option>`).join("")}
+      </select>
+    </div>
+    <div>
+      <div class="pr-label">Ticket Size (₹)</div>
+      <input class="pr-input" type="number" placeholder="e.g. 45000" value="${p.ticketSize||""}" onchange="updateP(${i},'ticketSize',this.value)">
+    </div>
+    <div>
+      <div class="pr-label">Call Status</div>
+      <select class="pr-input" onchange="updateP(${i},'callStatus',this.value)">
+        ${["Called","Not Picked","Callback","Interested","Not Interested"].map(s=>`<option value="${s}"${p.callStatus===s?" selected":""}>${s}</option>`).join("")}
+      </select>
+    </div>
+    <button class="btn-remove" onclick="removeProspect(${i})" title="Remove">×</button>
+  </div>`).join("");
+}
+
+function addProspect(){
+  S.dForm.prospects.push(emptyProspect());
+  document.getElementById("prospect-list").innerHTML=renderProspects(S.dForm.prospects);
+}
+function removeProspect(i){
+  if(S.dForm.prospects.length<=1) return;
+  S.dForm.prospects.splice(i,1);
+  document.getElementById("prospect-list").innerHTML=renderProspects(S.dForm.prospects);
+}
+function updateP(i,k,v){ S.dForm.prospects[i][k]=v; }
+
+async function submitDaily(){
+  const f=S.dForm;
+  if(!f.date||!f.totalCalls){
+    S.toast={type:"error",msg:"Please fill Date and Total Calls Dialed at minimum."};
+    render(); return;
+  }
+  const entry={
+    id:Date.now(), ts:new Date().toISOString(), date:f.date,
+    by:S.user.name, byRole:S.user.role,
+    totalCalls:parseInt(f.totalCalls)||0,
+    followUps:parseInt(f.followUps)||0,
+    demosDone:parseInt(f.demosDone)||0,
+    emailsSent:parseInt(f.emailsSent)||0,
+    whatsappSent:parseInt(f.whatsappSent)||0,
+    callsPickup:parseInt(f.callsPickup)||0,
+    notes:f.notes,
+    prospects:f.prospects.filter(p=>p.name||p.course)
+  };
+  S.reports.push(entry);
+  save();
+  document.getElementById("badge-count").textContent=S.reports.length;
+  S.dForm=emptyDForm();
+  S.toast={type:"ok",msg:"✓ Daily report saved! "+(SHEETS_URL?"Syncing to Google Sheets...":"Stored locally.")};
+  render();
+  if(SHEETS_URL) await syncSheets({type:"daily_report",...entry});
+  setTimeout(()=>nav("dashboard"),2500);
+}
+
+/* ════ ADMISSION FORM ════ */
+function renderAdmForm(){
+  const f=S.aForm;
+  return `
+  <div class="page-hd">
+    <div><div class="page-title">New Admission</div><div class="page-sub">DIYguru Mobility Pvt. Ltd.</div></div>
+  </div>
+  ${S.toast?`<div class="toast ${S.toast.type}">${S.toast.msg}</div>`:""}
+  <div class="section-card">
+    <div class="section-title">🎓 Student / Lead Details</div>
+    <div class="form-grid">
+      <div class="ff"><label>Lead Name *</label><input id="a-name" placeholder="Full name" value="${f.name}"></div>
+      <div class="ff"><label>Phone *</label><input id="a-phone" placeholder="+91 9XXXXXXXXX" value="${f.phone}"></div>
+      <div class="ff"><label>Email</label><input type="email" id="a-email" placeholder="email@example.com" value="${f.email}"></div>
+      <div class="ff"><label>Course *</label>
+        <select id="a-course"><option value="">Select</option>${COURSES.map(c=>`<option value="${c}"${f.course===c?" selected":""}>${c}</option>`).join("")}</select>
+      </div>
+      <div class="ff"><label>Amount (₹) *</label><input type="number" id="a-amount" placeholder="45000" value="${f.amount}"></div>
+      <div class="ff"><label>Payment Type</label>
+        <select id="a-payment">${["Full Payment","EMI – 3M","EMI – 6M","EMI – 12M","Scholarship"].map(p=>`<option value="${p}"${f.payment===p?" selected":""}>${p}</option>`).join("")}</select>
+      </div>
+      <div class="ff"><label>Lead Source</label>
+        <select id="a-source"><option value="">Select</option>${SOURCES.map(s=>`<option value="${s}"${f.source===s?" selected":""}>${s}</option>`).join("")}</select>
+      </div>
+      <div class="ff"><label>Status</label>
+        <select id="a-status">${["Enrolled","Follow-up Required","Interested","Cold"].map(s=>`<option value="${s}"${f.status===s?" selected":""}>${s}</option>`).join("")}</select>
+      </div>
+      <div class="ff full"><label>Notes</label><textarea id="a-notes" rows="2">${f.notes}</textarea></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn-primary" onclick="submitAdm()">Submit Admission</button>
+      <button class="btn-secondary" onclick="S.aForm=emptyAForm();render()">Clear</button>
+    </div>
+  </div>`;
+}
+
+async function submitAdm(){
+  const f=S.aForm;
+  if(!f.name||!f.phone||!f.course||!f.amount){
+    S.toast={type:"error",msg:"Fill Name, Phone, Course, Amount"}; render(); return;
+  }
+  const e={id:Date.now(),ts:new Date().toISOString(),date:new Date().toLocaleDateString("en-IN"),
+    by:S.user.name,byRole:S.user.role,...f};
+  S.admissions.push(e); save();
+  S.aForm=emptyAForm();
+  S.toast={type:"ok",msg:"✓ Admission saved! "+(SHEETS_URL?"Syncing...":"")};
+  render();
+  if(SHEETS_URL) await syncSheets({type:"admission",...e});
+  setTimeout(()=>{S.toast=null;render();},3000);
+}
+
+/* ════ HISTORY ════ */
+function renderHistory(){
+  const all=S.reports.slice().reverse();
+  return `
+  <div class="page-hd">
+    <div><div class="page-title">All Daily Reports</div><div class="page-sub">${S.reports.length} total reports</div></div>
+    <button class="btn-excel" onclick="exportAll()">⬇ Export Excel</button>
+  </div>
+  <div class="stat-row">
+    <div class="stat-chip"><strong>${sumField(S.reports,"totalCalls")}</strong><span>Total Calls</span></div>
+    <div class="stat-chip"><strong>${sumField(S.reports,"followUps")}</strong><span>Follow-ups</span></div>
+    <div class="stat-chip"><strong>${S.reports.flatMap(r=>r.prospects||[]).length}</strong><span>Prospects Logged</span></div>
+    <div class="stat-chip"><strong>${S.reports.flatMap(r=>r.prospects||[]).filter(p=>p.stage==="Hot Lead").length}</strong><span>Hot Leads</span></div>
+  </div>
+  <div class="tbl-wrap">
+    ${all.length===0?`<div class="empty-row">No reports filed yet. Go to Daily Report to start.</div>`:`
+    <table class="data-table">
+      <thead><tr><th>#</th><th>Date</th><th>By</th><th>Calls</th><th>Followup</th><th>Demos</th><th>WhatsApp</th><th>Prospects</th><th>Hot</th><th>Notes</th></tr></thead>
+      <tbody>${all.map((r,i)=>{
+        const hp=(r.prospects||[]).filter(p=>p.stage==="Hot Lead").length;
+        return `<tr>
+          <td style="color:var(--muted)">${S.reports.length-i}</td>
+          <td><strong>${fmtS(r.date)}</strong></td>
+          <td>${r.by.split(" ")[0]}</td>
+          <td style="font-weight:800;color:var(--gdeep)">${r.totalCalls}</td>
+          <td>${r.followUps}</td>
+          <td>${r.demosDone}</td>
+          <td>${r.whatsappSent}</td>
+          <td>${(r.prospects||[]).length}</td>
+          <td>${hp>0?`<span class="pill hot">${hp} Hot</span>`:"—"}</td>
+          <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${r.notes||"—"}</td>
+        </tr>`;}).join("")}
+      </tbody>
+    </table>`}
+  </div>
+
+  <div style="margin-top:1.4rem">
+    <div class="page-hd"><div class="page-title" style="font-size:15px">🎯 All Prospect Entries</div></div>
+    <div class="tbl-wrap">
+      ${S.reports.flatMap(r=>(r.prospects||[]).map(p=>({...p,date:r.date,by:r.by}))).length===0
+        ?`<div class="empty-row">No prospects logged</div>`:`
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>By</th><th>Prospect Name</th><th>Course</th><th>Stage</th><th>Ticket Size</th><th>Call Status</th></tr></thead>
+        <tbody>${S.reports.slice().reverse().flatMap(r=>(r.prospects||[]).filter(p=>p.name||p.course).map(p=>`
+          <tr>
+            <td>${fmtS(r.date)}</td>
+            <td>${r.by.split(" ")[0]}</td>
+            <td><strong>${p.name||"—"}</strong></td>
+            <td style="font-size:11px">${p.course||"—"}</td>
+            <td><span class="pill ${stageClass(p.stage)}">${p.stage}</span></td>
+            <td>${p.ticketSize?`<strong>₹${parseInt(p.ticketSize).toLocaleString("en-IN")}</strong>`:"—"}</td>
+            <td style="font-size:11px">${p.callStatus||"—"}</td>
+          </tr>`)).join("")}
+        </tbody>
+      </table>`}
+    </div>
+  </div>`;
+}
+
+/* ════ ATTENDANCE ════ */
+function renderAttendance(){
+  const my=S.attendance.filter(a=>a.user===S.user.name).slice().reverse();
+  const calcH=(i,o)=>((new Date(o)-new Date(i))/3600000).toFixed(1);
+  return `
+  <div class="page-hd">
+    <div><div class="page-title">Attendance</div><div class="page-sub">${S.user.name}</div></div>
+    <button class="btn-excel" onclick="exportAll()">⬇ Export</button>
+  </div>
+  <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);max-width:480px">
+    <div class="kpi dark"><div class="kpi-lbl">Days Present</div><div class="kpi-val">${my.filter(a=>a.out).length}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Total Hours</div><div class="kpi-val" style="font-size:20px">${my.filter(a=>a.out).reduce((s,a)=>s+parseFloat(calcH(a.in,a.out)),0).toFixed(1)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Avg Hours/Day</div>
+      <div class="kpi-val" style="font-size:20px">${my.filter(a=>a.out).length?
+        (my.filter(a=>a.out).reduce((s,a)=>s+parseFloat(calcH(a.in,a.out)),0)/my.filter(a=>a.out).length).toFixed(1):"0"}</div>
+    </div>
+  </div>
+  ${my.length===0?`<p style="color:var(--muted);font-size:13px">No attendance yet. Use Clock In above.</p>`:
+    `<div class="tbl-wrap"><table class="data-table" style="min-width:400px">
+      <thead><tr><th>#</th><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th></tr></thead>
+      <tbody>${my.map((a,i)=>`
+        <tr>
+          <td style="color:var(--muted)">${i+1}</td>
+          <td><strong>${new Date(a.date).toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short"})}</strong></td>
+          <td>${fmtT(new Date(a.in))}</td>
+          <td>${a.out?fmtT(new Date(a.out)):`<span style="color:#27ae60;font-weight:700">Active</span>`}</td>
+          <td><strong>${a.out?calcH(a.in,a.out)+" hrs":"—"}</strong></td>
+        </tr>`).join("")}
+      </tbody>
+    </table></div>`}`;
+}
+
+/* ════ EXPORT ════ */
+function exportAll(){
+  const wb=XLSX.utils.book_new();
+
+  /* Sheet 1: Interns Daily Report */
+  const dailyRows=[];
+  S.reports.forEach((r,i)=>{
+    const base={
+      "#":i+1,"Date":r.date,"Submitted By":r.by,"Role":r.byRole,
+      "Total Calls":r.totalCalls,"Follow-ups":r.followUps,"Demos":r.demosDone,
+      "Emails Sent":r.emailsSent,"WhatsApp":r.whatsappSent,"Calls Pickup":r.callsPickup||0,
+      "Prospects Count":(r.prospects||[]).length,
+      "Hot Leads":(r.prospects||[]).filter(p=>p.stage==="Hot Lead").length,
+      "Notes":r.notes||""
+    };
+    dailyRows.push(base);
+  });
+  const ws1=XLSX.utils.json_to_sheet(dailyRows.length?dailyRows:[{"Message":"No reports yet"}]);
+  ws1["!cols"]=[4,12,18,14,12,10,10,12,10,10,14,10,30].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws1,"Interns Daily Report");
+
+  /* Sheet 2: Prospects */
+  const prospRows=[];
+  S.reports.forEach(r=>(r.prospects||[]).filter(p=>p.name||p.course).forEach(p=>{
+    prospRows.push({"Date":r.date,"Intern":r.by,"Prospect Name":p.name,"Phone":p.phone||"",
+      "Course":p.course,"Stage":p.stage,"Ticket Size (₹)":p.ticketSize||"",
+      "Call Status":p.callStatus,"Goal":p.goal||""});
+  }));
+  const ws2=XLSX.utils.json_to_sheet(prospRows.length?prospRows:[{"Message":"No prospects yet"}]);
+  ws2["!cols"]=[12,16,18,14,25,14,14,14,14].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws2,"Prospects Log");
+
+  /* Sheet 3: Admissions */
+  const admRows=S.admissions.map((a,i)=>({
+    "#":i+1,"Date":a.date,"Name":a.name,"Phone":a.phone,"Email":a.email||"",
+    "Course":a.course,"Amount (₹)":parseInt(a.amount)||0,"Payment":a.payment,
+    "Source":a.source||"","Status":a.status,"Notes":a.notes||"","By":a.by
+  }));
+  const ws3=XLSX.utils.json_to_sheet(admRows.length?admRows:[{"Message":"No admissions yet"}]);
+  XLSX.utils.book_append_sheet(wb,ws3,"Admissions");
+
+  /* Sheet 4: Attendance */
+  const attRows=S.attendance.map((a,i)=>({
+    "#":i+1,"Name":a.user,"Role":a.role||"","Date":new Date(a.date).toLocaleDateString("en-IN"),
+    "Clock In":fmtT(new Date(a.in)),"Clock Out":a.out?fmtT(new Date(a.out)):"—",
+    "Hours":a.out?((new Date(a.out)-new Date(a.in))/3600000).toFixed(1):"—"
+  }));
+  const ws4=XLSX.utils.json_to_sheet(attRows.length?attRows:[{"Message":"No attendance yet"}]);
+  XLSX.utils.book_append_sheet(wb,ws4,"Attendance");
+
+  XLSX.writeFile(wb,`DIYguru_ERP_${todayISO()}.xlsx`);
+}
+
+/* ════ GOOGLE SHEETS SYNC ════ */
+async function syncSheets(data){
+  if(!SHEETS_URL) return;
+  try{
+    await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+  }catch(e){console.warn("Sheets sync:",e)}
+}
+
+/* ── BIND FORM EVENTS ── */
+function bindAll(){
+  const ids=[
+    ["f-date","date"],["f-totalCalls","totalCalls"],["f-followUps","followUps"],
+    ["f-demosDone","demosDone"],["f-emailsSent","emailsSent"],["f-whatsappSent","whatsappSent"],
+    ["f-callsPickup","callsPickup"],["f-notes","notes"]
+  ];
+  ids.forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(el) el.oninput=el.onchange=()=>S.dForm[key]=el.value;
+  });
+  const aIds=[["a-name","name"],["a-phone","phone"],["a-email","email"],["a-course","course"],
+    ["a-amount","amount"],["a-payment","payment"],["a-source","source"],["a-status","status"],["a-notes","notes"]];
+  aIds.forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(el) el.oninput=el.onchange=()=>S.aForm[key]=el.value;
+  });
+}
+
+/* ── INIT ── */
+load();
+buildLogin();
+</script>
+
+<!--
+═══════════════════════════════════════════════════════════════
+  GOOGLE SHEETS BACKEND SETUP
+═══════════════════════════════════════════════════════════════
+
+Step 1 — Create a Google Sheet named "DIYguru ERP"
+Step 2 — Extensions > Apps Script > paste this code:
+
+function doPost(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const data = JSON.parse(e.postData.contents);
+  
+  if (data.type === "daily_report") {
+    let sh = ss.getSheetByName("Interns Daily Report") || ss.insertSheet("Interns Daily Report");
+    if (sh.getLastRow() === 0) sh.appendRow(["Date","By","Role","Total Calls","Follow-ups","Demos","Emails","WhatsApp","Pickup","Prospects","Notes","Timestamp"]);
+    sh.appendRow([data.date,data.by,data.byRole,data.totalCalls,data.followUps,data.demosDone,data.emailsSent,data.whatsappSent,data.callsPickup,(data.prospects||[]).length,data.notes,data.ts]);
+    
+    const prosp = data.prospects || [];
+    if (prosp.length > 0) {
+      let psh = ss.getSheetByName("Prospects Log") || ss.insertSheet("Prospects Log");
+      if (psh.getLastRow() === 0) psh.appendRow(["Date","Intern","Name","Course","Stage","Ticket Size","Call Status"]);
+      prosp.forEach(p => psh.appendRow([data.date,data.by,p.name,p.course,p.stage,p.ticketSize,p.callStatus]));
+    }
+  }
+  
+  if (data.type === "admission") {
+    let sh = ss.getSheetByName("Admissions") || ss.insertSheet("Admissions");
+    if (sh.getLastRow() === 0) sh.appendRow(["Date","Name","Phone","Email","Course","Amount","Payment","Source","Status","Notes","By"]);
+    sh.appendRow([data.date,data.name,data.phone,data.email,data.course,data.amount,data.payment,data.source,data.status,data.notes,data.by]);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({status:"ok"})).setMimeType(ContentService.MimeType.JSON);
+}
+
+Step 3 — Deploy > New Deployment > Web App > Anyone > Copy URL
+Step 4 — Set SHEETS_URL = "https://script.google.com/macros/s/YOUR_ID/exec"
+
+═══════════════════════════════════════════════════════════════
+  HOST FREE ON NETLIFY (get a Google-accessible URL!)
+═══════════════════════════════════════════════════════════════
+1. Go to → https://app.netlify.com/drop
+2. Drag this HTML file
+3. Get URL like: diyguru-erp.netlify.app
+4. Share + bookmark with your team
+
+═══════════════════════════════════════════════════════════════
+-->
+</body>
+</html>
